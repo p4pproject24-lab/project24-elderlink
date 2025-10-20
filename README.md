@@ -4,6 +4,7 @@
   <h2>Project 24 - AI-Enabled Virtual Assistant for Aged Care</h2>
   <p><strong>Research Compendium & Supporting Materials</strong></p>
   <p><em>University of Auckland Part 4 Project</em></p>
+  <p><strong>GitHub Repository:</strong> <a href="https://github.com/p4pproject24-lab/project24-elderlink">https://github.com/p4pproject24-lab/project24-elderlink</a></p>
 </div>
 
 ---
@@ -124,68 +125,284 @@ The Project 24 AI Companion system implements a microservices architecture with 
 
 ### **Data Flow Architecture**
 
-```mermaid
-graph TB
-    A[User Input] --> B[Frontend App]
-    B --> C[Backend API]
-    C --> D[LLM Service]
-    C --> E[Memory Service]
-    C --> F[HeyGen Service]
-    E --> G[Embedding Service]
-    G --> H[ChromaDB]
-    D --> I[OpenAI API]
-    F --> J[HeyGen API]
-    K[Whisper Service] --> C
-    L[MongoDB] --> C
-```
+**Primary Request Flow:**
+1. **User Input** → Frontend App (React Native)
+2. **Frontend App** → Backend API (Spring Boot on port 8080)
+3. **Backend API** → Multiple Services:
+   - **LLM Service** → OpenAI API (GPT-4o-mini)
+   - **Memory Service** → Embedding Service (FastAPI on port 8000)
+   - **HeyGen Service** → HeyGen API (Avatar streaming)
+4. **Embedding Service** → ChromaDB (Vector database)
+5. **Backend API** → MongoDB (User data and conversations)
+
+**Speech Processing Flow:**
+1. **Audio Input** → Whisper Service (FastAPI on port 8001)
+2. **Whisper Service** → OpenAI Whisper API
+3. **Transcribed Text** → Backend API
+4. **Response Generation** → LLM Service → OpenAI API
+5. **Avatar Response** → HeyGen Service → HeyGen API
+6. **Video Stream** → Frontend App (LiveKit integration)
+
+**Memory Retrieval Flow:**
+1. **User Query** → Backend API
+2. **Backend API** → Memory Service
+3. **Memory Service** → Embedding Service
+4. **Embedding Service** → ChromaDB (Semantic search)
+5. **Relevant Memories** → Backend API
+6. **Enhanced Response** → LLM Service (with memory context)
 
 ---
 
 ## Implementation Details
 
-### **Backend Controllers (11 Total)**
+### **Backend Architecture (Spring Boot)**
 
-| Controller | Purpose | Key Endpoints |
-|------------|---------|---------------|
-| `ChatController` | Core chat functionality | `/memory/ask`, `/memory/ask-avatar`, `/memory/ask-game-avatar` |
-| `UserController` | User management | `/users/profile`, `/users/update` |
-| `AuthController` | Authentication | `/auth/register`, `/auth/login` |
-| `MemoryController` | Memory operations | `/memory/introduce`, `/memory/recall` |
-| `GameController` | Cognitive games | `/games/create`, `/games/sessions` |
-| `DailySummaryController` | Daily summaries | `/daily-summaries/{userId}` |
-| `ReminderController` | Reminder management | `/reminders/create`, `/reminders/list` |
-| `WeatherController` | Weather integration | `/weather/current` |
-| `LocationController` | Location services | `/location/update` |
-| `ConnectionController` | User connections | `/connections/link` |
-| `HeyGenController` | Avatar management | `/heygen/create-session` |
+**Core Framework:**
+- **Spring Boot 3.2+** with Java 21
+- **Spring Security** for authentication and authorization
+- **Spring Data MongoDB** for database operations
+- **LangChain4j** for LLM integration
+- **Maven** for dependency management
 
-### **Frontend Screens (28 Total)**
+**Service Layer Structure:**
+```
+ai-companion/backend/src/main/java/com/example/ai_companion/
+├── controller/          # 11 REST API controllers
+│   ├── ChatController.java           # Core AI chat endpoints
+│   ├── UserController.java          # User profile management
+│   ├── AuthController.java          # Authentication flows
+│   ├── MemoryController.java        # Memory operations
+│   ├── GameController.java          # Cognitive games
+│   ├── DailySummaryController.java  # Daily summaries
+│   ├── ReminderController.java      # Reminder system
+│   ├── WeatherController.java       # Weather integration
+│   ├── LocationController.java      # Location services
+│   ├── ConnectionController.java    # User relationships
+│   └── HeyGenController.java        # Avatar management
+├── service/             # 11 business logic services
+│   ├── LLMService.java              # OpenAI GPT integration
+│   ├── MemoryService.java           # Semantic memory management
+│   ├── UserService.java             # User operations
+│   ├── GameService.java             # Game logic
+│   ├── DailySummaryService.java     # Summary generation
+│   ├── ReminderService.java         # Reminder processing
+│   ├── WeatherService.java          # Weather data
+│   ├── LocationService.java         # Location tracking
+│   ├── ConnectionService.java       # Relationship management
+│   ├── HeyGenService.java           # Avatar streaming
+│   └── CustomUserDetailsService.java # Security integration
+├── model/               # Data models and entities
+│   ├── User.java                    # User entity
+│   ├── Message.java                 # Chat messages
+│   ├── GameSession.java             # Game sessions
+│   ├── DailySummary.java            # Daily summaries
+│   ├── Reminder.java                # Reminder entity
+│   ├── Location.java                # Location data
+│   └── Connection.java               # User relationships
+├── repository/          # MongoDB repositories
+│   ├── UserRepository.java          # User data access
+│   ├── MessageRepository.java       # Message storage
+│   ├── GameSessionRepository.java   # Game data
+│   ├── DailySummaryRepository.java  # Summary storage
+│   ├── ReminderRepository.java      # Reminder data
+│   ├── LocationRepository.java      # Location data
+│   └── ConnectionRepository.java     # Relationship data
+├── config/              # Configuration classes
+│   ├── LLMConfig.java               # LLM provider setup
+│   ├── SecurityConfig.java          # Security configuration
+│   ├── FirebaseConfig.java          # Firebase integration
+│   ├── EnvConfig.java               # Environment loading
+│   └── WebSocketConfig.java         # WebSocket setup
+└── utils/               # Utility classes
+    └── logger.java                  # Experimental logging
+```
 
-#### **Authentication & Onboarding**
-- `MainScreen.tsx` - Login and registration
-- `RoleSelectionScreen.tsx` - User role selection
-- `ProfileFlowScreen.tsx` - Multi-step user onboarding
+**Backend Controllers (11 Total):**
 
-#### **Elderly User Interface (7 screens)**
-- `ElderlyHomeScreen.tsx` - Main dashboard
-- `AiChatScreen.tsx` - AI conversation interface
-- `DailyCheckinScreen.tsx` - Daily wellness check-ins
-- `GamesScreen.tsx` - Cognitive games selection
-- `GameSessionScreen.tsx` - Active game sessions
-- `DailySummariesScreen.tsx` - Daily summary viewing
-- `SummaryDetailScreen.tsx` - Detailed summary analysis
+| Controller | Purpose | Key Endpoints | Dependencies |
+|------------|---------|---------------|--------------|
+| `ChatController` | Core chat functionality | `/memory/ask`, `/memory/ask-avatar`, `/memory/ask-game-avatar` | LLMService, MemoryService, HeyGenService |
+| `UserController` | User management | `/users/profile`, `/users/update` | UserService, AuthService |
+| `AuthController` | Authentication | `/auth/register`, `/auth/login` | FirebaseAuth, UserService |
+| `MemoryController` | Memory operations | `/memory/introduce`, `/memory/recall` | MemoryService, EmbeddingService |
+| `GameController` | Cognitive games | `/games/create`, `/games/sessions` | GameService, LLMService |
+| `DailySummaryController` | Daily summaries | `/daily-summaries/{userId}` | DailySummaryService, LLMService |
+| `ReminderController` | Reminder management | `/reminders/create`, `/reminders/list` | ReminderService, UserService |
+| `WeatherController` | Weather integration | `/weather/current` | WeatherService, OpenWeatherMap API |
+| `LocationController` | Location services | `/location/update` | LocationService, MongoDB |
+| `ConnectionController` | User connections | `/connections/link` | ConnectionService, UserService |
+| `HeyGenController` | Avatar management | `/heygen/create-session` | HeyGenService, HeyGen API |
 
-#### **Caregiver Interface (4 screens)**
-- `CaregiverHomeScreen.tsx` - Caregiver dashboard
-- `CaregiverMapScreen.tsx` - Location tracking
-- `CaregiverDailySummariesScreen.tsx` - Elderly user summaries
-- `CaregiverSummaryDetailScreen.tsx` - Detailed analysis
+**Key Backend Services:**
 
-#### **Shared Components (4 screens)**
-- `RemindersScreen.tsx` - Reminder management
-- `MapsScreen.tsx` - Location services
-- `SettingsScreen.tsx` - Application settings
-- `SummaryScreen.tsx` - Summary viewing
+**LLMService.java:**
+- **Purpose**: OpenAI GPT-4o-mini integration with LangChain4j
+- **Features**: Response generation, memory context integration, logging
+- **Configuration**: Temperature, max tokens, model selection
+- **Dependencies**: OpenAI API, MemoryService
+
+**MemoryService.java:**
+- **Purpose**: Semantic memory management and retrieval
+- **Features**: Memory storage, similarity search, user-specific collections
+- **Integration**: ChromaDB via Embedding Service
+- **Dependencies**: Embedding Service (FastAPI), ChromaDB
+
+**HeyGenService.java:**
+- **Purpose**: Avatar streaming and session management
+- **Features**: Session creation, task execution, video streaming
+- **Integration**: HeyGen API, LiveKit for frontend streaming
+- **Dependencies**: HeyGen API, WebSocket connections
+
+### **Frontend Architecture (React Native)**
+
+**Core Framework:**
+- **React Native 0.72+** with Expo SDK 49
+- **TypeScript** for type safety
+- **React Navigation 6** for screen navigation
+- **Expo AV** for audio/video handling
+- **LiveKit** for real-time avatar streaming
+- **AsyncStorage** for local data persistence
+
+**Frontend Structure:**
+```
+frontend/src/
+├── screens/              # 28 specialized screens
+│   ├── Auth/             # Authentication flows
+│   │   ├── MainScreen.tsx                    # Login/registration
+│   │   └── RoleSelectionScreen.tsx            # User role selection
+│   ├── Elderly/          # Elderly user interface (7 screens)
+│   │   ├── ElderlyHomeScreen.tsx             # Main dashboard
+│   │   ├── AiChatScreen.tsx                  # AI conversation with avatar
+│   │   ├── DailyCheckinScreen.tsx            # Wellness check-ins
+│   │   ├── GamesScreen.tsx                   # Game selection
+│   │   ├── GameSessionScreen.tsx             # Active game sessions
+│   │   ├── DailySummariesScreen.tsx          # Summary viewing
+│   │   └── SummaryDetailScreen.tsx           # Detailed summaries
+│   ├── Caregiver/        # Caregiver interface (4 screens)
+│   │   ├── CaregiverHomeScreen.tsx           # Caregiver dashboard
+│   │   ├── CaregiverMapScreen.tsx            # Location tracking
+│   │   ├── CaregiverDailySummariesScreen.tsx # Elderly summaries
+│   │   └── CaregiverSummaryDetailScreen.tsx  # Detailed analysis
+│   ├── ProfileFlow/      # User onboarding (11 screens)
+│   │   ├── ProfileFlowScreen.tsx             # Main onboarding flow
+│   │   ├── ProfileStage1.tsx                 # Basic information
+│   │   ├── ElderlyStage2.tsx                 # Elderly-specific setup
+│   │   ├── ElderlyStage3.tsx                 # Additional preferences
+│   │   ├── CaregiverStage2.tsx               # Caregiver-specific setup
+│   │   └── CaregiverPendingApproval.tsx      # Approval workflow
+│   └── shared/           # Shared screens (4 screens)
+│       ├── RemindersScreen.tsx               # Reminder management
+│       ├── MapsScreen.tsx                    # Location services
+│       ├── SettingsScreen.tsx                # App settings
+│       └── SummaryScreen.tsx                 # Summary viewing
+├── components/           # 25+ reusable components
+│   ├── ChatHistoryModal.tsx                  # Chat history display
+│   ├── CurrentElderlyButton.tsx              # Elderly user selector
+│   ├── DailySummaries.tsx                   # Summary components
+│   ├── ElderlySelectorModal.tsx              # User selection modal
+│   ├── GameCard.tsx                          # Game display cards
+│   ├── GamesSelectionModal.tsx               # Game selection interface
+│   ├── IconButton.tsx                        # Custom button component
+│   ├── ReminderFormModal.tsx                 # Reminder creation
+│   ├── SettingsModal.tsx                     # Settings interface
+│   ├── TTSButton.tsx                         # Text-to-speech button
+│   ├── TTSWrapper.tsx                        # TTS functionality wrapper
+│   └── ui/                   # Base UI components (7 components)
+│       ├── Button.tsx                        # Standard button
+│       ├── Card.tsx                          # Card container
+│       ├── Header.tsx                        # Screen headers
+│       ├── ProgressStepper.tsx               # Progress indicators
+│       ├── ScreenContainer.tsx               # Screen wrapper
+│       ├── Text.tsx                          # Custom text component
+│       └── TextInput.tsx                     # Input fields
+├── hooks/                  # 32 custom React hooks
+│   ├── useAiChat.ts                          # AI chat functionality
+│   ├── useAuth.ts                            # Authentication
+│   ├── useAvatarCache.ts                     # Avatar caching
+│   ├── useConnectionRequests.ts              # User connections
+│   ├── useDailySummary.ts                    # Summary management
+│   ├── useFirebaseAuth.ts                    # Firebase authentication
+│   ├── useGames.ts                           # Game functionality
+│   ├── useGeoapifyAutocomplete.ts            # Location autocomplete
+│   ├── useHeyGen.ts                          # Avatar streaming
+│   ├── useIntroduction.ts                    # User onboarding
+│   ├── useLocationTracking.ts                # Location services
+│   ├── useRole.ts                            # User role management
+│   ├── useSpeechToText.ts                    # Speech recognition
+│   ├── useTTS.ts                             # Text-to-speech
+│   ├── useUpdateUserProfile.ts               # Profile updates
+│   ├── useWeather.ts                         # Weather data
+│   └── useWhisper.ts                         # Whisper integration
+├── contexts/               # 6 React contexts
+│   ├── AuthContext.tsx                       # Authentication state
+│   ├── AvatarPreloaderContext.tsx            # Avatar preloading
+│   ├── CurrentElderlyContext.tsx              # Current elderly user
+│   ├── ProfileFlowStepContext.tsx            # Onboarding state
+│   ├── TTSContext.tsx                        # Text-to-speech state
+│   └── UserRoleContext.tsx                   # User role state
+├── services/               # 33 API service modules
+│   ├── aiChatService.ts                      # AI chat API calls
+│   ├── authService.ts                        # Authentication API
+│   ├── connectionService.ts                  # User connections
+│   ├── dailySummaryService.ts                # Summary API
+│   ├── gameService.ts                        # Game API
+│   ├── geoapifyService.ts                    # Location services
+│   ├── heygenService.ts                      # Avatar streaming
+│   ├── locationService.ts                    # Location tracking
+│   ├── locationTrackingService.ts            # Location management
+│   ├── mapService.ts                         # Map functionality
+│   ├── memoryService.ts                      # Memory operations
+│   ├── reminderService.ts                    # Reminder management
+│   ├── ttsService.ts                         # Text-to-speech
+│   ├── userService.ts                        # User management
+│   ├── weatherService.ts                     # Weather data
+│   └── whisperService.ts                     # Speech recognition
+├── navigation/             # Navigation configuration
+│   ├── AppNavigator.tsx                      # Main navigation
+│   └── RootNavigator.tsx                     # Root navigation
+├── theme/                  # Theming system
+│   ├── colors.ts                             # Color palette
+│   ├── fontSizes.ts                          # Typography sizes
+│   ├── iconSizes.ts                          # Icon dimensions
+│   ├── metrics.ts                            # Screen metrics
+│   ├── spacing.ts                            # Spacing system
+│   └── typography.ts                         # Font configurations
+├── types/                  # TypeScript type definitions
+│   ├── AiChat.ts                             # Chat types
+│   ├── ApiResponse.ts                        # API response types
+│   ├── Game.ts                               # Game types
+│   ├── Geoapify.ts                           # Location types
+│   ├── HeyGen.ts                             # Avatar types
+│   └── UserResponse.ts                       # User types
+└── utils/                   # Utility functions
+    └── networkUtils.ts                        # Network utilities
+```
+
+**Key Frontend Components:**
+
+**AiChatScreen.tsx (Elderly Interface):**
+- **Purpose**: Main AI conversation interface with avatar integration
+- **Features**: Real-time avatar streaming, speech-to-text, TTS, memory integration
+- **Dependencies**: HeyGen service, Whisper service, LiveKit, TTS context
+- **State Management**: Chat history, avatar session, audio controls
+
+**CaregiverHomeScreen.tsx (Caregiver Interface):**
+- **Purpose**: Caregiver dashboard for monitoring elderly users
+- **Features**: Elderly user list, daily summaries, location tracking, connection management
+- **Dependencies**: Connection service, daily summary service, location service
+- **State Management**: Current elderly user, summary data, location updates
+
+**ProfileFlowScreen.tsx (Onboarding):**
+- **Purpose**: Multi-step user onboarding and profile setup
+- **Features**: Role selection, profile completion, preference setup, approval workflow
+- **Dependencies**: User service, authentication, role management
+- **State Management**: Profile steps, form data, validation state
+
+**TTSButton.tsx (Accessibility):**
+- **Purpose**: Text-to-speech functionality for elderly users
+- **Features**: Audio playback, speech controls, accessibility integration
+- **Dependencies**: TTS service, audio context
+- **State Management**: Playback state, audio controls
 
 ### **Service Architecture**
 
@@ -1674,13 +1891,62 @@ The `LLMService.generateAndTrack()` method processes requests sequentially. The 
 
 ## Individual Contributions
 
-*This section will be updated to include individual student submissions and contributions as they are added to the compendium.*
+This section details the primary contributions of each team member to the Project 24 AI-enabled virtual assistant system. Both team members collaborated extensively across multiple components, with primary ownership areas as outlined below.
 
-### **Andy Lee Contributions**
-- [To be added]
+### **Andy Lee - Primary Contributions**
 
-### **Andrew Shin Contributions**
-- [To be added]
+**Backend AI Services & Core Infrastructure:**
+- **LLM Service Integration**: Implemented OpenAI GPT-4o-mini integration with LangChain4j framework
+- **Embedding Service**: Developed FastAPI-based semantic memory service with ChromaDB integration
+- **Memory Management**: Created user-specific memory collections and similarity search algorithms
+- **Backend Controllers**: Implemented 11 REST API controllers for all system endpoints
+- **Service Layer**: Developed 11 business logic services including LLMService, MemoryService, WeatherService
+- **Logging Infrastructure**: Built comprehensive logging system for experimental data collection
+- **Database Integration**: MongoDB repository implementations and data models
+
+**Frontend Caregiver Interface:**
+- **Caregiver Dashboard**: Complete caregiver home screen with elderly user management
+- **Daily Summaries**: Caregiver summary screens and detailed view components
+- **Map Integration**: Caregiver location tracking and elderly user monitoring
+- **Connection Management**: Elderly-caregiver relationship management system
+
+**System Architecture:**
+- **Microservices Design**: Backend service architecture and API design
+
+### **Andrew Shin - Primary Contributions**
+
+**Frontend Elderly User Interface:**
+- **Elderly Screens**: Complete elderly user interface including home, chat, games, and daily check-in screens
+- **Avatar Integration**: HeyGen streaming avatar implementation with real-time video
+- **Speech Integration**: Whisper speech-to-text and TTS (Text-to-Speech) functionality
+- **Game System**: Interactive game sessions and game selection interfaces
+- **Profile Flow**: Multi-stage user onboarding and profile setup
+
+**Backend Authentication & Integration:**
+- **Firebase Authentication**: Complete Firebase Auth integration in backend services
+- **Security Configuration**: Spring Security setup and user authentication flows
+- **Avatar Services**: HeyGen API integration and session management
+- **User Management**: User profile services and role-based access control
+
+**Frontend Architecture:**
+- **React Native Components**: 25+ reusable UI components and custom hooks
+- **Context Management**: Authentication, TTS, and user role context providers
+- **Navigation**: App navigation structure and screen routing
+- **Theme System**: Comprehensive theming and styling architecture
+
+**System Architecture:**
+- **Docker Configuration**: Container orchestration and service deployment
+- **Environment Management**: Configuration and deployment automation scripts
+
+### **Collaborative Work**
+
+Both team members actively collaborated on:
+- **System Integration**: Cross-service communication and API design
+- **Testing**: Comprehensive test suite development and quality assurance
+- **Documentation**: Technical documentation and user guides
+- **UI/UX Design**: User interface design decisions and accessibility considerations
+- **Performance Optimization**: System performance tuning and optimization
+- **Research Methodology**: Experimental setup and data collection procedures
 
 
 ---
