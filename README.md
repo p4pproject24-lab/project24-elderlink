@@ -2002,10 +2002,4 @@ For detailed setup instructions, prerequisites, and deployment information, plea
 
 ---
 
-## 📞 Contact Information
-
-For questions about this research compendium or the Project 24 implementation, please refer to the individual component documentation or contact the research team.
-
----
-
 **Note:** This compendium is designed to support academic research and enable replication of the Project 24 AI-enabled virtual assistant system. All materials are provided for educational and research purposes.
