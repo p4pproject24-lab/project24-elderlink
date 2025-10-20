@@ -1,0 +1,90 @@
+# Development-focused Docker Compose
+# Use this for local development with hot reloading
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: ai-companion-mongodb-dev
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: ai-companion
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - ai-companion-dev
+
+  # Memory Embedding Service
+  embed-service:
+    build:
+      context: ./ai-companion/embed-service
+      dockerfile: Dockerfile
+    container_name: ai-companion-embed-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai-companion/embed-service:/app
+      - embed_dev_data:/app/chroma-memory
+    depends_on:
+      - mongodb
+    networks:
+      - ai-companion-dev
+    command: ["uvicorn", "memory_api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Whisper Speech-to-Text Service
+  whisper-service:
+    build:
+      context: ./ai-companion/whisper-service
+      dockerfile: Dockerfile
+    container_name: ai-companion-whisper-dev
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ai-companion/whisper-service:/app
+    depends_on:
+      - mongodb
+    networks:
+      - ai-companion-dev
+    command: ["uvicorn", "whisper_api:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  # Backend with development profile
+  backend:
+    build:
+      context: ./ai-companion/backend
+      dockerfile: Dockerfile
+    container_name: ai-companion-backend-dev
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # Debug port
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://admin:${MONGODB_PASSWORD:-changeme123}@mongodb:27017/ai-companion?authSource=admin
+      EMBED_SERVICE_URL: http://embed-service:8000
+      WHISPER_SERVICE_URL: http://whisper-service:8001
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    depends_on:
+      - mongodb
+      - embed-service
+      - whisper-service
+    networks:
+      - ai-companion-dev
+    volumes:
+      - ./ai-companion/backend/logs:/app/logs
+      - ./ai-companion/backend/src:/app/src
+    env_file:
+      - .env
+
+networks:
+  ai-companion-dev:
+    driver: bridge
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+  embed_dev_data:
+    driver: local

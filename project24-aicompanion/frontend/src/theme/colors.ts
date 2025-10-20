@@ -1,0 +1,38 @@
+export const colors = {
+  light: {
+    primary: '#5EBFB5',
+    primaryLight: '#e8f0fe',
+    secondary: '#f1f5f9',
+    background: '#f8fafc',
+    surface: '#fff',
+    textPrimary: '#1e293b',
+    textSecondary: '#64748b',
+    accent: '#fbbf24',
+    error: '#ef4444',
+    border: '#e2e8f0',
+    shadow: 'rgba(37, 99, 235, 0.08)',
+    disabled: '#cbd5e1',
+    card: '#f1f5f9',
+    success: '#22c55e',
+    cardHighlight: '#e8f0fe',
+  },
+  dark: {
+    primary: '#60a5fa',
+    primaryLight: '#1e293b',
+    secondary: '#334155',
+    background: '#0f172a',
+    surface: '#1e293b',
+    textPrimary: '#f1f5f9',
+    textSecondary: '#94a3b8',
+    accent: '#fde68a',
+    error: '#f87171',
+    border: '#334155',
+    shadow: 'rgba(16, 37, 70, 0.32)',
+    disabled: '#475569',
+    card: '#1e293b',
+    success: '#4ade80',
+    cardHighlight: '#223a5f',
+  },
+};
+
+export type ThemeMode = 'light' | 'dark'; 

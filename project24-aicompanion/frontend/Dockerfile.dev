@@ -1,0 +1,59 @@
+# Development Dockerfile for React Native Frontend
+FROM node:18-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    git \
+    python3 \
+    make \
+    g++
+
+# Install Expo CLI globally
+RUN npm install -g @expo/cli
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S expo && \
+    adduser -S expo -u 1001
+
+# Development stage
+FROM base AS development
+
+# Copy package files first for better layer caching
+COPY --chown=expo:expo package*.json ./
+
+# Install dependencies with cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
+
+# Install additional Expo dependencies for Docker environment
+RUN npx expo install @expo/metro-runtime@~5.0.4
+
+# Copy application code
+COPY --chown=expo:expo . .
+
+# Make start script executable
+RUN chmod +x /app/start-expo.sh
+
+# Create and set ownership of .expo directory
+RUN mkdir -p /home/expo/.expo && \
+    chown -R expo:expo /home/expo/.expo
+
+# Switch to non-root user
+USER expo
+
+# Expose Expo dev server port
+EXPOSE 8081
+EXPOSE 19000
+EXPOSE 19001
+EXPOSE 19002
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:19002 || exit 1
+
+# Start Expo development server
+CMD ["/bin/sh", "./start-expo.sh"]

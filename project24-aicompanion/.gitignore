@@ -1,0 +1,31 @@
+# Node/Expo
+frontend/node_modules/
+frontend/coverage/
+
+# iOS/Android build artifacts
+frontend/ios/build/
+frontend/android/app/build/
+
+# Java backend build artifacts
+ai-companion/backend/target/
+
+# Python venvs and caches
+ai-companion/embed-service/embed_venv/
+ai-companion/whisper-service/whisper_venv/
+**/__pycache__/
+
+# Logs
+**/logs/
+
+# Firebase config files (contain real API keys)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Debug keystores
+**/debug.keystore
+
+# iOS Pods
+frontend/ios/Pods/
+
+# Misc
+.DS_Store

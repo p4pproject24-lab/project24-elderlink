@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: ai-companion-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: ai-companion
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - ai-companion-network
+
+  # Memory Embedding Service
+  embed-service:
+    build:
+      context: ./ai-companion/embed-service
+      dockerfile: Dockerfile
+    container_name: ai-companion-embed
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - embed_data:/app/chroma-memory
+    depends_on:
+      - mongodb
+    networks:
+      - ai-companion-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Whisper Speech-to-Text Service
+  whisper-service:
+    build:
+      context: ./ai-companion/whisper-service
+      dockerfile: Dockerfile
+    container_name: ai-companion-whisper
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mongodb
+    networks:
+      - ai-companion-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./ai-companion/backend
+      dockerfile: Dockerfile
+    container_name: ai-companion-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Database configuration
+      SPRING_DATA_MONGODB_URI: mongodb://admin:${MONGODB_PASSWORD:-changeme123}@mongodb:27017/ai-companion?authSource=admin
+      
+      # Service URLs (internal Docker network)
+      EMBED_SERVICE_URL: http://embed-service:8000
+      WHISPER_SERVICE_URL: http://whisper-service:8001
+      
+      # External API keys (set these in .env file)
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+      AVATAR_STREAMING_API_KEY: ${AVATAR_STREAMING_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      
+      # Application configuration
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - mongodb
+      - embed-service
+      - whisper-service
+    networks:
+      - ai-companion-network
+    volumes:
+      - ./ai-companion/backend/logs:/app/logs
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # React Native Frontend (Development)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: ai-companion-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:8081"  # Expo CLI
+      - "19000:19000"  # Expo Dev Server
+      - "19001:19001"  # Expo Dev Server
+      - "19002:19002"  # Expo Dev Server
+    environment:
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      REACT_NATIVE_PACKAGER_HOSTNAME: 0.0.0.0
+      EXPO_PUBLIC_DOCKER_ENV: "true"
+      # Docker internal service URLs
+      EXPO_PUBLIC_API_URL: http://host.docker.internal:8080
+      EXPO_PUBLIC_WHISPER_API_URL: http://host.docker.internal:8001
+      EXPO_PUBLIC_MEMORY_API_URL: http://host.docker.internal:8000
+    depends_on:
+      - backend
+    networks:
+      - ai-companion-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - expo_cache:/home/expo/.expo
+    stdin_open: true
+    tty: true
+
+networks:
+  ai-companion-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  embed_data:
+    driver: local
+  expo_cache:
+    driver: local

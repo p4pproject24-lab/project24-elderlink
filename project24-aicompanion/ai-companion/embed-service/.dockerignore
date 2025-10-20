@@ -1,0 +1,37 @@
+# Virtual environments
+embed_venv/
+venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ChromaDB data (will be created inside container)
+chroma-memory/
+
+# Development files
+.git/
+.gitignore
+README.md
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+.Trash
+ehthumbs.db
